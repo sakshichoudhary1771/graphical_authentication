@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Register</title>
+    <style>
+        /* Reset and base */
+        * {
+            box-sizing: border-box;
+        }
+        body, html {
+            margin: 0; padding: 0;
+            height: 100%;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f7fa;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        #main {
+            background: white;
+            padding: 30px 40px;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+            width: 360px;
+            text-align: center;
+        }
+        h2 {
+            margin-bottom: 24px;
+            color: #222;
+            font-weight: 700;
+        }
+        input[type="text"], input[type="file"] {
+            width: 100%;
+            padding: 12px 14px;
+            margin-bottom: 20px;
+            border: 1.8px solid #ccc;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+        input[type="text"]:focus, input[type="file"]:focus {
+            border-color: #3b82f6;
+            outline: none;
+        }
+        #container {
+            position: relative;
+            display: none;
+            margin: 0 auto 20px;
+            border: 2px solid #3b82f6;
+            border-radius: 10px;
+            max-width: 100%;
+            max-height: 300px;
+            cursor: crosshair;
+            user-select: none;
+        }
+        #imgDisplay {
+            display: block;
+            width: 100%;
+            height: auto;
+            border-radius: 10px;
+        }
+        #clickCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            border-radius: 10px;
+        }
+        #status {
+            font-size: 0.95rem;
+            color: #555;
+            min-height: 22px;
+            margin-bottom: 10px;
+        }
+        button, input[type="submit"] {
+            background: #3b82f6;
+            border: none;
+            color: white;
+            font-weight: 600;
+            font-size: 1rem;
+            padding: 12px 0;
+            border-radius: 8px;
+            cursor: pointer;
+            width: 100%;
+            transition: background-color 0.3s;
+        }
+        button:hover, input[type="submit"]:hover {
+            background: #2563eb;
+        }
+    </style>
+</head>
+<body>
+    <div id="main">
+        <h2>Register (Click 3 Points)</h2>
+        <input type="text" id="username" placeholder="Enter username" autocomplete="off" /><br/>
+        <input type="file" id="imageUpload" accept="image/*" /><br/>
+        <div id="container">
+            <img id="imgDisplay" src="" alt="Upload an image" />
+            <canvas id="clickCanvas"></canvas>
+        </div>
+        <p id="status">Upload an image to start</p>
+    </div>
+
+    <script>
+        const imageUpload = document.getElementById('imageUpload');
+        const imgDisplay = document.getElementById('imgDisplay');
+        const canvas = document.getElementById('clickCanvas');
+        const container = document.getElementById('container');
+        const ctx = canvas.getContext('2d');
+        const clicks = [];
+        let uploadedFilename = "";
+
+        function resizeCanvasToImage() {
+            canvas.width = imgDisplay.clientWidth;
+            canvas.height = imgDisplay.clientHeight;
+            canvas.style.width = imgDisplay.clientWidth + 'px';
+            canvas.style.height = imgDisplay.clientHeight + 'px';
+        }
+
+        imageUpload.addEventListener('change', () => {
+            const file = imageUpload.files[0];
+            if (!file) return;
+            if (!file.type.startsWith('image/')) {
+                alert("Please upload an image file");
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('image', file);
+
+            fetch('/upload_image', {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.filename) {
+                    uploadedFilename = data.filename;
+                    imgDisplay.src = '/static/uploads/' + uploadedFilename;
+                    container.style.display = 'block';
+                    clicks.length = 0;
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                    imgDisplay.onload = () => {
+                        resizeCanvasToImage();
+                        document.getElementById("status").innerText = "Click 3 points on the image";
+                    };
+                } else {
+                    alert(data.message || "Image upload failed");
+                }
+            })
+            .catch(() => alert("Upload error"));
+        });
+
+        canvas.addEventListener('click', e => {
+            if (clicks.length >= 3) return;
+            const rect = canvas.getBoundingClientRect();
+            const x = Math.floor(e.clientX - rect.left);
+            const y = Math.floor(e.clientY - rect.top);
+            clicks.push([x, y]);
+
+            ctx.beginPath();
+            ctx.arc(x, y, 7, 0, 2 * Math.PI);
+            ctx.fillStyle = "green";
+            ctx.shadowColor = 'rgba(0,0,0,0.2)';
+            ctx.shadowBlur = 4;
+            ctx.fill();
+            ctx.shadowBlur = 0;
+
+            document.getElementById('status').innerText = `Clicks: ${JSON.stringify(clicks)}`;
+
+            if (clicks.length === 3) {
+                const username = document.getElementById("username").value.trim();
+                if (!username) return alert("Please enter a username.");
+
+                fetch('/register_clicks', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, clicks, image_filename: uploadedFilename })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    alert(data.message);
+                    if (data.message.toLowerCase().includes("success")) {
+                        window.location.href = "/dashboard";
+                    } else {
+                        clicks.length = 0;
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>
