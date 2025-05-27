@@ -1,6 +1,0 @@
-2025-05-26 12:02:39,337 -  * Detected change in 'c:\\Users\\dabas\\OneDrive\\Documents\\graphical_auth\\tempCodeRunnerFile.py', reloading
-2025-05-26 12:02:39,404 -  * Restarting with stat
-2025-05-26 12:02:40,840 -  * Debugger is active!
-2025-05-26 12:02:40,852 -  * Debugger PIN: 121-668-641
-2025-05-26 12:03:03,505 - 127.0.0.1 - - [26/May/2025 12:03:03] "GET / HTTP/1.1" 200 -
-2025-05-26 12:03:05,470 - 127.0.0.1 - - [26/May/2025 12:03:05] "GET /register HTTP/1.1" 200 -
